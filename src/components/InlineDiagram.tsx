@@ -44,7 +44,6 @@ const loadTemplateShapes = async (): Promise<TemplateShapeMap> => {
         return templateShapeCache;
       });
   }
-
   return templateShapePromise;
 };
 
@@ -66,21 +65,16 @@ const InlineDiagram = ({
 
   useEffect(() => {
     let cancelled = false;
-
     if (!templateId) {
       setTemplateShapes([]);
       return;
     }
-
     loadTemplateShapes().then((allShapes) => {
       if (!cancelled) {
         setTemplateShapes(allShapes[templateId] ?? []);
       }
     });
-
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [templateId]);
 
   const draw = useCallback(() => {
@@ -99,19 +93,19 @@ const InlineDiagram = ({
     ctx.clearRect(0, 0, data.width, data.height);
 
     const rc = rough.canvas(canvas);
+    const useTemplateNodeStyle = Boolean(templateId) && templateShapes.length > 0;
 
-    if (templateId && templateShapes.length > 0) {
+    // Draw template background shapes
+    if (useTemplateNodeStyle) {
       ctx.save();
       ctx.globalAlpha = 0.45;
       ctx.translate(0, 70);
       ctx.scale(data.width / 960, (data.height - 120) / 540);
 
       templateShapes.forEach((shape, i) => {
-        // Use color palette colors instead of original shape colors
         const paletteColor = colorPalette[i % colorPalette.length];
         const fill = paletteColor || shape.options?.fill || "hsl(0 0% 78%)";
         const stroke = paletteColor || shape.options?.stroke || fill;
-
         rc.path(shape.path, {
           fill,
           stroke,
@@ -120,28 +114,12 @@ const InlineDiagram = ({
           fillStyle: "solid",
         });
       });
-
       ctx.restore();
     }
 
-    const useTemplateNodeStyle = Boolean(templateId) && templateShapes.length > 0;
-
     // Connections — only draw when NOT using template style
-    // Enforce dynamic node sizing based on label length
-    const enforceNodeSizes = (nodes: DiagramNode[]) => {
-      const ctx2 = canvas.getContext("2d");
-      if (!ctx2) return;
-      ctx2.font = useTemplateNodeStyle ? "bold 18px 'Caveat', cursive" : "bold 16px 'Caveat', cursive";
-      
-      nodes.forEach((node) => {
-        const labelWidth = ctx2.measureText(node.label).width;
-        const minW = Math.max(130, labelWidth + 40);
-        node.width = Math.min(220, minW);
-        node.height = node.label.length > 15 ? 80 : 64;
-      });
-    };
-
-    enforceNodeSizes(data.nodes);
+    if (!useTemplateNodeStyle) {
+      data.connections.forEach((conn) => {
         const fromNode = data.nodes.find((n) => n.id === conn.from);
         const toNode = data.nodes.find((n) => n.id === conn.to);
         if (!fromNode || !toNode) return;
@@ -160,20 +138,8 @@ const InlineDiagram = ({
         const edgeX = to.x - Math.cos(angle) * (toNode.width / 2 + 4);
         const edgeY = to.y - Math.sin(angle) * (toNode.height / 2 + 4);
 
-        rc.line(
-          edgeX,
-          edgeY,
-          edgeX - headLen * Math.cos(angle - Math.PI / 6),
-          edgeY - headLen * Math.sin(angle - Math.PI / 6),
-          { stroke: "#666", strokeWidth: 1.5, roughness: 0.5 }
-        );
-        rc.line(
-          edgeX,
-          edgeY,
-          edgeX - headLen * Math.cos(angle + Math.PI / 6),
-          edgeY - headLen * Math.sin(angle + Math.PI / 6),
-          { stroke: "#666", strokeWidth: 1.5, roughness: 0.5 }
-        );
+        rc.line(edgeX, edgeY, edgeX - headLen * Math.cos(angle - Math.PI / 6), edgeY - headLen * Math.sin(angle - Math.PI / 6), { stroke: "#666", strokeWidth: 1.5, roughness: 0.5 });
+        rc.line(edgeX, edgeY, edgeX - headLen * Math.cos(angle + Math.PI / 6), edgeY - headLen * Math.sin(angle + Math.PI / 6), { stroke: "#666", strokeWidth: 1.5, roughness: 0.5 });
 
         if (conn.label) {
           const midX = (from.x + to.x) / 2;
@@ -189,6 +155,7 @@ const InlineDiagram = ({
     // Nodes
     data.nodes.forEach((node, i) => {
       const color = node.color || colorPalette[i % colorPalette.length];
+      const isFirst = i === 0;
 
       // Only draw node shapes when NOT using a template
       if (!useTemplateNodeStyle) {
@@ -204,33 +171,29 @@ const InlineDiagram = ({
         switch (node.type) {
           case "ellipse":
           case "circle":
-            rc.ellipse(
-              node.x + node.width / 2,
-              node.y + node.height / 2,
-              node.width,
-              node.height,
-              opts
-            );
+            rc.ellipse(node.x + node.width / 2, node.y + node.height / 2, node.width, node.height, opts);
             break;
           case "diamond":
-            rc.polygon(
-              [
-                [node.x + node.width / 2, node.y],
-                [node.x + node.width, node.y + node.height / 2],
-                [node.x + node.width / 2, node.y + node.height],
-                [node.x, node.y + node.height / 2],
-              ],
-              opts
-            );
+            rc.polygon([
+              [node.x + node.width / 2, node.y],
+              [node.x + node.width, node.y + node.height / 2],
+              [node.x + node.width / 2, node.y + node.height],
+              [node.x, node.y + node.height / 2],
+            ], opts);
             break;
           default:
             rc.rectangle(node.x, node.y, node.width, node.height, opts);
         }
       }
 
-      // Label
-      ctx.font = useTemplateNodeStyle ? "bold 18px 'Caveat', cursive" : "bold 16px 'Caveat', cursive";
-      ctx.fillStyle = useTemplateNodeStyle ? "hsl(220, 20%, 20%)" : "#fff";
+      // Label with visual hierarchy
+      const fontSize = useTemplateNodeStyle 
+        ? (isFirst ? 22 : 17)
+        : (isFirst ? 18 : 15);
+      const fontWeight = isFirst ? "bold" : "600";
+      
+      ctx.font = `${fontWeight} ${fontSize}px 'Caveat', cursive`;
+      ctx.fillStyle = useTemplateNodeStyle ? "hsl(220, 20%, 15%)" : "#fff";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
 
@@ -252,12 +215,27 @@ const InlineDiagram = ({
       });
       if (currentLine) lines.push(currentLine);
 
-      const lineHeight = 18;
+      const lineHeight = fontSize + 2;
       const totalHeight = lines.length * lineHeight;
       const startY = labelY - totalHeight / 2 + lineHeight / 2;
+      
+      // Add text shadow for better readability on colored backgrounds
+      if (!useTemplateNodeStyle) {
+        ctx.shadowColor = "rgba(0,0,0,0.4)";
+        ctx.shadowBlur = 3;
+        ctx.shadowOffsetX = 1;
+        ctx.shadowOffsetY = 1;
+      }
+      
       lines.forEach((line, idx) =>
         ctx.fillText(line, centerX, startY + idx * lineHeight)
       );
+      
+      // Reset shadow
+      ctx.shadowColor = "transparent";
+      ctx.shadowBlur = 0;
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 0;
     });
 
     // Title
@@ -285,8 +263,8 @@ const InlineDiagram = ({
       svgEl.setAttribute("xmlns", "http://www.w3.org/2000/svg");
 
       const rc = rough.svg(svgEl);
+      const useTemplateNodeStyle = Boolean(templateId);
 
-      // Draw connections
       data.connections.forEach((conn) => {
         const fromNode = data.nodes.find((n) => n.id === conn.from);
         const toNode = data.nodes.find((n) => n.id === conn.to);
@@ -301,9 +279,6 @@ const InlineDiagram = ({
         svgEl.appendChild(rc.line(edgeX, edgeY, edgeX - headLen * Math.cos(angle - Math.PI / 6), edgeY - headLen * Math.sin(angle - Math.PI / 6), { stroke: "#666", strokeWidth: 1.5, roughness: 0.5 }));
         svgEl.appendChild(rc.line(edgeX, edgeY, edgeX - headLen * Math.cos(angle + Math.PI / 6), edgeY - headLen * Math.sin(angle + Math.PI / 6), { stroke: "#666", strokeWidth: 1.5, roughness: 0.5 }));
       });
-
-      // Draw nodes
-      const useTemplateNodeStyle = Boolean(templateId);
 
       data.nodes.forEach((node, i) => {
         const color = node.color || colorPalette[i % colorPalette.length];
@@ -323,7 +298,6 @@ const InlineDiagram = ({
           }
         }
 
-        // Label
         const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
         text.setAttribute("x", String(node.x + node.width / 2));
         text.setAttribute("y", String(node.y + node.height / 2));
@@ -332,12 +306,11 @@ const InlineDiagram = ({
         text.setAttribute("font-family", "'Caveat', cursive");
         text.setAttribute("font-size", "16");
         text.setAttribute("font-weight", "bold");
-        text.setAttribute("fill", useTemplateNodeStyle ? "hsl(220, 20%, 20%)" : "#fff");
+        text.setAttribute("fill", useTemplateNodeStyle ? "hsl(220, 20%, 15%)" : "#fff");
         text.textContent = node.label;
         svgEl.appendChild(text);
       });
 
-      // Title
       if (data.title) {
         const titleEl = document.createElementNS("http://www.w3.org/2000/svg", "text");
         titleEl.setAttribute("x", String(data.width / 2));
@@ -392,7 +365,6 @@ const InlineDiagram = ({
       transition={{ duration: 0.4, ease: "easeOut" }}
       className="relative my-4 mx-2 rounded-xl border border-border/60 bg-card/30 backdrop-blur-sm overflow-hidden group"
     >
-      {/* Source text indicator */}
       {sourceText && (
         <div className="flex items-center gap-2 px-4 py-2 border-b border-border/40 bg-muted/30 text-xs text-muted-foreground" style={{ direction: "rtl" }}>
           <Quote className="w-3 h-3 shrink-0" />
@@ -400,57 +372,24 @@ const InlineDiagram = ({
         </div>
       )}
 
-      {/* Controls */}
       <div className="absolute top-2 left-2 z-10 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-        <Button
-          variant="secondary"
-          size="icon"
-          className="h-7 w-7"
-          onClick={onRegenerate}
-          disabled={isRegenerating}
-          title="ייצור מחדש"
-        >
+        <Button variant="secondary" size="icon" className="h-7 w-7" onClick={onRegenerate} disabled={isRegenerating} title="ייצור מחדש">
           <RotateCcw className="w-3.5 h-3.5" />
         </Button>
-        <Button
-          variant="secondary"
-          size="icon"
-          className="h-7 w-7"
-          onClick={() => handleDownload("png")}
-          title="הורד PNG"
-        >
+        <Button variant="secondary" size="icon" className="h-7 w-7" onClick={() => handleDownload("png")} title="הורד PNG">
           <Download className="w-3.5 h-3.5" />
         </Button>
-        <Button
-          variant="secondary"
-          size="icon"
-          className="h-7 w-7"
-          onClick={() => handleDownload("svg")}
-          title="הורד SVG"
-        >
+        <Button variant="secondary" size="icon" className="h-7 w-7" onClick={() => handleDownload("svg")} title="הורד SVG">
           <FileDown className="w-3.5 h-3.5" />
         </Button>
-        <Button
-          variant="secondary"
-          size="icon"
-          className="h-7 w-7"
-          onClick={handleCopy}
-          title="העתק"
-        >
+        <Button variant="secondary" size="icon" className="h-7 w-7" onClick={handleCopy} title="העתק">
           <Copy className="w-3.5 h-3.5" />
         </Button>
-        <Button
-          variant="secondary"
-          size="icon"
-          className="h-7 w-7"
-          onClick={onRemove}
-          title="הסר"
-        >
+        <Button variant="secondary" size="icon" className="h-7 w-7" onClick={onRemove} title="הסר">
           <X className="w-3.5 h-3.5" />
         </Button>
       </div>
 
-      {/* Canvas */}
       <div className="flex items-center justify-center overflow-auto p-4 canvas-grid paper-texture">
         <canvas ref={canvasRef} className="max-w-full" />
       </div>
