@@ -20,6 +20,8 @@ export interface DocumentBlock {
 interface InlineEditorProps {
   colorPalette: string[];
   selectedTemplateId: DiagramTemplateId;
+  onAiSuggestTemplate?: (templateId: DiagramTemplateId) => void;
+  onAiSuggestColorTheme?: (themeId: string) => void;
 }
 
 const InlineEditor = forwardRef<{ insertText: (text: string) => void }, InlineEditorProps>(({ colorPalette, selectedTemplateId }, ref) => {
