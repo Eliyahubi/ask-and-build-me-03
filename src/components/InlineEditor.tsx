@@ -236,7 +236,7 @@ const InlineEditor = forwardRef<{ insertText: (text: string) => void }, InlineEd
         setLoadingBlockId(null);
       }
     },
-    [blocks, generationMode, selectedTemplateId]
+    [blocks, generationMode, selectedTemplateId, aiAuto]
   );
 
   return (

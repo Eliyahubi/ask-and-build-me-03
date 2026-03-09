@@ -4,6 +4,7 @@ import { Pencil } from "lucide-react";
 import { colorThemes, type ColorTheme } from "@/components/ColorThemePicker";
 import ColorThemePicker from "@/components/ColorThemePicker";
 import TemplateSelector, { type Template } from "@/components/TemplateSelector";
+import AiAutoToggle from "@/components/AiAutoToggle";
 import InlineEditor from "@/components/InlineEditor";
 import {
   diagramTemplates,
@@ -15,6 +16,7 @@ const Index = () => {
   const [selectedTemplateId, setSelectedTemplateId] = useState<DiagramTemplateId>(
     diagramTemplates[0].id
   );
+  const [aiAuto, setAiAuto] = useState(true);
   const editorRef = useRef<{ insertText: (text: string) => void }>(null);
 
   const handleSelectColorTheme = useCallback((theme: ColorTheme) => {
@@ -54,14 +56,19 @@ const Index = () => {
             <h1 className="text-lg font-bold font-sketch tracking-wide">OpenNapkinAI</h1>
           </div>
           <div className="flex items-center gap-2">
-            <TemplateSelector
-              selectedTemplateId={selectedTemplateId}
-              onSelect={handleSelectTemplate}
-            />
-            <ColorThemePicker
-              selectedTheme={selectedTheme.id}
-              onSelect={handleSelectColorTheme}
-            />
+            <AiAutoToggle aiAuto={aiAuto} onToggle={setAiAuto} />
+            {!aiAuto && (
+              <>
+                <TemplateSelector
+                  selectedTemplateId={selectedTemplateId}
+                  onSelect={handleSelectTemplate}
+                />
+                <ColorThemePicker
+                  selectedTheme={selectedTheme.id}
+                  onSelect={handleSelectColorTheme}
+                />
+              </>
+            )}
           </div>
         </div>
       </header>
@@ -76,6 +83,7 @@ const Index = () => {
           ref={editorRef}
           colorPalette={selectedTheme.colors}
           selectedTemplateId={selectedTemplateId}
+          aiAuto={aiAuto}
           onAiSuggestTemplate={handleAiSuggestTemplate}
           onAiSuggestColorTheme={handleAiSuggestColorTheme}
         />
