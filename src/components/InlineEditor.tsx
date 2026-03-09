@@ -20,6 +20,7 @@ export interface DocumentBlock {
 interface InlineEditorProps {
   colorPalette: string[];
   selectedTemplateId: DiagramTemplateId;
+  aiAuto?: boolean;
   onAiSuggestTemplate?: (templateId: DiagramTemplateId) => void;
   onAiSuggestColorTheme?: (themeId: string) => void;
 }
