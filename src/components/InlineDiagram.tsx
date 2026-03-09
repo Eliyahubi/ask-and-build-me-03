@@ -127,27 +127,43 @@ const InlineDiagram = ({
         const from = getNodeCenter(fromNode);
         const to = getNodeCenter(toNode);
 
+        // Draw connection line
         rc.line(from.x, from.y, to.x, to.y, {
-          stroke: "#666",
-          strokeWidth: 1.5,
-          roughness: 1.2,
+          stroke: "#555",
+          strokeWidth: 2,
+          roughness: 1.0,
         });
 
+        // Arrowhead
         const angle = Math.atan2(to.y - from.y, to.x - from.x);
-        const headLen = 12;
-        const edgeX = to.x - Math.cos(angle) * (toNode.width / 2 + 4);
-        const edgeY = to.y - Math.sin(angle) * (toNode.height / 2 + 4);
+        const headLen = 14;
+        const edgeX = to.x - Math.cos(angle) * (toNode.width / 2 + 6);
+        const edgeY = to.y - Math.sin(angle) * (toNode.height / 2 + 6);
 
-        rc.line(edgeX, edgeY, edgeX - headLen * Math.cos(angle - Math.PI / 6), edgeY - headLen * Math.sin(angle - Math.PI / 6), { stroke: "#666", strokeWidth: 1.5, roughness: 0.5 });
-        rc.line(edgeX, edgeY, edgeX - headLen * Math.cos(angle + Math.PI / 6), edgeY - headLen * Math.sin(angle + Math.PI / 6), { stroke: "#666", strokeWidth: 1.5, roughness: 0.5 });
+        rc.line(edgeX, edgeY, edgeX - headLen * Math.cos(angle - Math.PI / 6), edgeY - headLen * Math.sin(angle - Math.PI / 6), { stroke: "#555", strokeWidth: 2, roughness: 0.5 });
+        rc.line(edgeX, edgeY, edgeX - headLen * Math.cos(angle + Math.PI / 6), edgeY - headLen * Math.sin(angle + Math.PI / 6), { stroke: "#555", strokeWidth: 2, roughness: 0.5 });
 
+        // Connection label - draw with background pill for readability
         if (conn.label) {
           const midX = (from.x + to.x) / 2;
           const midY = (from.y + to.y) / 2;
-          ctx.font = "14px 'Caveat', cursive";
-          ctx.fillStyle = "#666";
+          ctx.font = "bold 13px 'Caveat', cursive";
+          const labelWidth = ctx.measureText(conn.label).width;
+          
+          // Background pill
+          ctx.fillStyle = "rgba(255,255,255,0.85)";
+          ctx.beginPath();
+          const pillPad = 6;
+          ctx.roundRect(midX - labelWidth / 2 - pillPad, midY - 12, labelWidth + pillPad * 2, 20, 8);
+          ctx.fill();
+          ctx.strokeStyle = "#999";
+          ctx.lineWidth = 0.5;
+          ctx.stroke();
+          
+          ctx.fillStyle = "#444";
           ctx.textAlign = "center";
-          ctx.fillText(conn.label, midX, midY - 8);
+          ctx.textBaseline = "middle";
+          ctx.fillText(conn.label, midX, midY);
         }
       });
     }

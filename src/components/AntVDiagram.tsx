@@ -1,6 +1,6 @@
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import { motion } from "framer-motion";
-import { X, RotateCcw, Download, Copy, Quote } from "lucide-react";
+import { X, RotateCcw, Download, Copy, Quote, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
@@ -21,6 +21,8 @@ const AntVDiagram = ({
 }: AntVDiagramProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const infographicRef = useRef<any>(null);
+  const [renderError, setRenderError] = useState<string | null>(null);
+  const [isRendered, setIsRendered] = useState(false);
 
   useEffect(() => {
     if (!containerRef.current || !syntax) return;
@@ -29,6 +31,9 @@ const AntVDiagram = ({
 
     const renderInfographic = async () => {
       try {
+        setRenderError(null);
+        setIsRendered(false);
+
         const { Infographic } = await import("@antv/infographic");
 
         if (cancelled || !containerRef.current) return;
@@ -38,6 +43,7 @@ const AntVDiagram = ({
           try {
             infographicRef.current.destroy();
           } catch { /* ignore */ }
+          infographicRef.current = null;
         }
 
         containerRef.current.innerHTML = "";
@@ -49,9 +55,28 @@ const AntVDiagram = ({
         });
 
         infographicRef.current = infographic;
+        
+        // Render the syntax
         infographic.render(syntax);
+        
+        // Check if SVG was actually created
+        setTimeout(() => {
+          if (!cancelled && containerRef.current) {
+            const svgEl = containerRef.current.querySelector("svg");
+            if (svgEl) {
+              setIsRendered(true);
+              console.log("AntV Infographic rendered successfully");
+            } else {
+              console.warn("AntV: No SVG element found after render");
+              setRenderError("הרינדור לא הצליח - נסה לייצר מחדש");
+            }
+          }
+        }, 1000);
       } catch (err) {
         console.error("AntV Infographic render error:", err);
+        if (!cancelled) {
+          setRenderError(`שגיאה ברינדור: ${err instanceof Error ? err.message : "לא ידוע"}`);
+        }
       }
     };
 
@@ -91,7 +116,6 @@ const AntVDiagram = ({
     if (!svgEl) return;
 
     try {
-      // Convert SVG to canvas for clipboard
       const svgData = new XMLSerializer().serializeToString(svgEl);
       const img = new Image();
       const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
@@ -148,10 +172,29 @@ const AntVDiagram = ({
         </Button>
       </div>
 
+      {renderError && (
+        <div className="flex items-center justify-center gap-2 p-4 text-sm text-destructive" style={{ direction: "rtl" }}>
+          <AlertTriangle className="w-4 h-4" />
+          <span>{renderError}</span>
+          <Button variant="outline" size="sm" onClick={onRegenerate} className="mr-2">
+            נסה שוב
+          </Button>
+        </div>
+      )}
+
       <div
         ref={containerRef}
-        className="flex items-center justify-center p-4 min-h-[400px]"
+        className="flex items-center justify-center p-4"
+        style={{ minHeight: "500px", width: "100%" }}
       />
+
+      {/* Debug: show raw syntax in dev */}
+      {!isRendered && !renderError && syntax && (
+        <details className="px-4 pb-2 text-xs text-muted-foreground">
+          <summary className="cursor-pointer">סינטקס גולמי (דיבאג)</summary>
+          <pre className="mt-1 p-2 bg-muted/50 rounded text-[10px] whitespace-pre-wrap overflow-auto max-h-40" dir="ltr">{syntax}</pre>
+        </details>
+      )}
     </motion.div>
   );
 };

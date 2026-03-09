@@ -6,95 +6,96 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-// Available AntV Infographic templates organized by data type
-const TEMPLATE_MAP = {
-  list: [
-    "list-row-simple-horizontal-arrow",
-    "list-row-horizontal-icon-arrow",
-    "list-grid-compact-card",
-    "list-row-simple-vertical",
-    "list-column-simple",
-    "list-grid-icon-card",
-    "list-row-simple-horizontal-number",
-  ],
-  sequence: [
-    "sequence-steps-simple",
-    "sequence-stairs-front-pill-badge",
-    "sequence-steps-card",
-    "sequence-snake-horizontal-card",
-    "sequence-timeline-horizontal",
-    "sequence-timeline-vertical",
-  ],
-  comparison: [
-    "compare-binary-card",
-    "compare-binary-simple",
-    "compare-swot-card",
-    "compare-quadrant-simple",
-  ],
-  hierarchy: [
-    "hierarchy-mindmap-right",
-    "hierarchy-mindmap-lr",
-    "hierarchy-org-chart",
-    "hierarchy-tree-vertical",
-  ],
-  relation: [
-    "relation-dagre-flow-tb-simple-circle-node",
-    "relation-dagre-flow-lr-card",
-    "relation-radial-simple",
-    "relation-cycle-simple",
-  ],
-  chart: [
-    "chart-pie-simple",
-    "chart-bar-simple",
-    "chart-column-simple",
-    "chart-line-simple",
-  ],
-};
+const SYSTEM_PROMPT = `You are an expert infographic designer using AntV Infographic syntax.
 
-const ALL_TEMPLATES = Object.values(TEMPLATE_MAP).flat();
+AntV Infographic uses a YAML-like indented syntax. Here are EXACT working examples:
 
-const SYSTEM_PROMPT = `You are an expert infographic designer. Given text, generate AntV Infographic syntax.
-
-AntV Infographic syntax format:
-\`\`\`
-infographic <template-name>
+EXAMPLE 1 - Simple list:
+infographic list-row-simple-horizontal-arrow
 data
-  title <title text>
-  desc <description>
+  title Project Phases
   lists
-    - label <item label>
-      desc <item description>
-      value <number if applicable>
-      icon <icon-keyword>
-\`\`\`
+    - label Phase 1
+      desc Planning and research
+    - label Phase 2
+      desc Design and prototyping
+    - label Phase 3
+      desc Development
 
-DATA TYPES by template prefix:
-- list-*: Use "lists" field with label, desc, icon
-- sequence-*: Use "sequences" field with label, desc  
-- compare-*: Use "lists" field split into groups
-- hierarchy-*: Use "root" with "children" (recursive)
-- relation-*: Use "nodes" with "relations" (from, to)
-- chart-*: Use "lists" with label, value
+EXAMPLE 2 - Steps:
+infographic sequence-steps-simple
+data
+  title How It Works
+  sequences
+    - label Step 1
+      desc Sign up for free
+    - label Step 2
+      desc Create your project
+    - label Step 3
+      desc Launch
 
-RULES:
-1. Return ONLY the infographic syntax, no markdown, no backticks, no explanation
-2. Detect the INPUT language. If Hebrew, ALL labels/title/desc MUST be in Hebrew
-3. Labels should be SHORT (1-4 words)
-4. Descriptions should be one concise sentence
-5. Choose the most appropriate template from the available list
-6. Use 3-8 items max
-7. Add relevant icons using simple keywords (e.g., rocket, chart-line, users, target, etc.)
+EXAMPLE 3 - Comparison:
+infographic compare-binary-card
+data
+  title Pros vs Cons
+  lists
+    - label Advantage 1
+      desc Fast performance
+      group pros
+    - label Advantage 2
+      desc Easy to use
+      group pros
+    - label Disadvantage 1
+      desc Limited features
+      group cons
 
-AVAILABLE TEMPLATES:
-${ALL_TEMPLATES.join(", ")}
+EXAMPLE 4 - Icon cards:
+infographic list-grid-icon-card
+data
+  title Key Features
+  lists
+    - label Speed
+      desc Lightning fast processing
+      icon rocket
+    - label Security
+      desc Enterprise-grade protection
+      icon shield
+    - label Scale
+      desc Grows with your needs
+      icon chart-line
 
-Choose the template that BEST matches the content structure:
-- Linear process/steps → sequence-*
-- Feature list/capabilities → list-*
-- Pros/cons/comparison → compare-*
-- Org chart/tree → hierarchy-*
-- Flow/relationships → relation-*
-- Data with numbers → chart-*`;
+EXAMPLE 5 - Timeline:
+infographic sequence-timeline-vertical
+data
+  title Company History
+  sequences
+    - label Founded
+      desc Started in a garage
+    - label Series A
+      desc Raised $10M
+    - label IPO
+      desc Went public
+
+AVAILABLE TEMPLATES (use exactly these names):
+Lists: list-row-simple-horizontal-arrow, list-row-horizontal-icon-arrow, list-grid-compact-card, list-row-simple-vertical, list-column-simple, list-grid-icon-card, list-row-simple-horizontal-number
+Steps/Sequence: sequence-steps-simple, sequence-stairs-front-pill-badge, sequence-steps-card, sequence-snake-horizontal-card, sequence-timeline-horizontal, sequence-timeline-vertical
+Comparison: compare-binary-card, compare-binary-simple, compare-swot-card, compare-quadrant-simple
+Hierarchy: hierarchy-mindmap-right, hierarchy-mindmap-lr, hierarchy-org-chart, hierarchy-tree-vertical
+Relations: relation-dagre-flow-tb-simple-circle-node, relation-dagre-flow-lr-card, relation-radial-simple, relation-cycle-simple
+Charts: chart-pie-simple, chart-bar-simple, chart-column-simple, chart-line-simple
+
+CRITICAL RULES:
+1. Return ONLY the raw syntax. NO markdown backticks, NO explanation, NO comments.
+2. Use EXACTLY 2-space indentation (not tabs).
+3. The first line MUST be: infographic <template-name>
+4. The second line MUST be: data
+5. Detect input language. If Hebrew, ALL text MUST be in Hebrew.
+6. Labels: 1-4 words MAX. Short and punchy.
+7. Descriptions: One concise sentence.
+8. Use 3-7 items.
+9. Choose the template that BEST fits the content structure.
+10. For list templates use "lists", for sequence templates use "sequences".
+11. Do NOT add any fields not shown in the examples above.`;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -125,15 +126,15 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
           {
             role: "user",
-            content: `Generate an AntV Infographic syntax for the following text. Choose the best template and structure:\n\n${text}`,
+            content: `Convert this text into an AntV Infographic. Choose the best template. Return ONLY the syntax, nothing else:\n\n${text}`,
           },
         ],
-        temperature: 0.4,
+        temperature: 0.3,
       }),
     });
 
@@ -172,10 +173,18 @@ serve(async (req) => {
     // Clean up: remove markdown code blocks if present
     let syntax = content.trim();
     if (syntax.startsWith("```")) {
-      syntax = syntax.replace(/^```(?:infographic|text)?\n?/, "").replace(/\n?```$/, "");
+      syntax = syntax.replace(/^```(?:infographic|text|yaml)?\n?/, "").replace(/\n?```$/, "");
+    }
+    
+    // Ensure it starts with "infographic"
+    if (!syntax.startsWith("infographic")) {
+      const idx = syntax.indexOf("infographic");
+      if (idx !== -1) {
+        syntax = syntax.substring(idx);
+      }
     }
 
-    console.info("Generated AntV syntax:", syntax.substring(0, 200));
+    console.info("Generated AntV syntax:", syntax.substring(0, 300));
 
     return new Response(JSON.stringify({ syntax }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
