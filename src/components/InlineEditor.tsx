@@ -20,11 +20,12 @@ export interface DocumentBlock {
 interface InlineEditorProps {
   colorPalette: string[];
   selectedTemplateId: DiagramTemplateId;
+  aiAuto?: boolean;
   onAiSuggestTemplate?: (templateId: DiagramTemplateId) => void;
   onAiSuggestColorTheme?: (themeId: string) => void;
 }
 
-const InlineEditor = forwardRef<{ insertText: (text: string) => void }, InlineEditorProps>(({ colorPalette, selectedTemplateId, onAiSuggestTemplate, onAiSuggestColorTheme }, ref) => {
+const InlineEditor = forwardRef<{ insertText: (text: string) => void }, InlineEditorProps>(({ colorPalette, selectedTemplateId, aiAuto = true, onAiSuggestTemplate, onAiSuggestColorTheme }, ref) => {
   const [generationMode, setGenerationMode] = useState<GenerationMode>("literal");
 
   useImperativeHandle(ref, () => ({
@@ -130,11 +131,14 @@ const InlineEditor = forwardRef<{ insertText: (text: string) => void }, InlineEd
       setSelectionInfo(null);
 
       try {
-        const requestBody = {
+        const requestBody: Record<string, unknown> = {
           text: selectedText,
           mode: generationMode,
-          templateId: selectedTemplateId,
         };
+        // Only send templateId when NOT in AI auto mode
+        if (!aiAuto) {
+          requestBody.templateId = selectedTemplateId;
+        }
 
         console.info("[generate-diagram] request", requestBody);
 
@@ -180,7 +184,7 @@ const InlineEditor = forwardRef<{ insertText: (text: string) => void }, InlineEd
         setLoadingBlockId(null);
       }
     },
-    [generationMode, selectedTemplateId]
+    [generationMode, selectedTemplateId, aiAuto]
   );
 
   const removeDiagram = useCallback((blockId: string) => {
@@ -194,11 +198,13 @@ const InlineEditor = forwardRef<{ insertText: (text: string) => void }, InlineEd
 
       setLoadingBlockId(blockId);
       try {
-        const requestBody = {
+        const requestBody: Record<string, unknown> = {
           text: block.sourceText,
           mode: generationMode,
-          templateId: selectedTemplateId,
         };
+        if (!aiAuto) {
+          requestBody.templateId = selectedTemplateId;
+        }
 
         console.info("[generate-diagram] regenerate", requestBody);
 
@@ -230,7 +236,7 @@ const InlineEditor = forwardRef<{ insertText: (text: string) => void }, InlineEd
         setLoadingBlockId(null);
       }
     },
-    [blocks, generationMode, selectedTemplateId]
+    [blocks, generationMode, selectedTemplateId, aiAuto]
   );
 
   return (
