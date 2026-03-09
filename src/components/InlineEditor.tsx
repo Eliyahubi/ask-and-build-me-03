@@ -154,7 +154,7 @@ const InlineEditor = forwardRef<{ insertText: (text: string) => void }, InlineEd
             setBlocks((prev) =>
               prev.map((b) =>
                 b.id === newDiagramId
-                  ? { ...b, antvSyntax: data.syntax, renderStyle: "professional" }
+                  ? { ...b, antvSyntax: data.svg, renderStyle: "professional" }
                   : b
               )
             );
