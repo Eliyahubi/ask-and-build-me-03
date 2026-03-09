@@ -127,8 +127,21 @@ const InlineDiagram = ({
     const useTemplateNodeStyle = Boolean(templateId) && templateShapes.length > 0;
 
     // Connections — only draw when NOT using template style
-    if (!useTemplateNodeStyle) {
-      data.connections.forEach((conn) => {
+    // Enforce dynamic node sizing based on label length
+    const enforceNodeSizes = (nodes: DiagramNode[]) => {
+      const ctx2 = canvas.getContext("2d");
+      if (!ctx2) return;
+      ctx2.font = useTemplateNodeStyle ? "bold 18px 'Caveat', cursive" : "bold 16px 'Caveat', cursive";
+      
+      nodes.forEach((node) => {
+        const labelWidth = ctx2.measureText(node.label).width;
+        const minW = Math.max(130, labelWidth + 40);
+        node.width = Math.min(220, minW);
+        node.height = node.label.length > 15 ? 80 : 64;
+      });
+    };
+
+    enforceNodeSizes(data.nodes);
         const fromNode = data.nodes.find((n) => n.id === conn.from);
         const toNode = data.nodes.find((n) => n.id === conn.to);
         if (!fromNode || !toNode) return;
