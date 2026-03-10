@@ -505,18 +505,20 @@ const applyTemplateLayout = (diagram: DiagramResponse, templateId: TemplateId | 
     }
 
     case "hexagon": {
-      // Hex grid: honeycomb arrangement
+      // Hex grid: honeycomb arrangement with hexagonal nodes
       const hexW = 150;
-      const hexH = 80;
+      const hexH = 90;
       const cols = Math.max(2, Math.ceil(Math.sqrt(n)));
 
       nodes.forEach((node, i) => {
         const col = i % cols;
         const row = Math.floor(i / cols);
-        const offsetX = row % 2 === 0 ? 0 : hexW * 0.5;
-        node.x = 100 + col * hexW + offsetX;
-        node.y = 120 + row * (hexH + 20);
-        node.type = "ellipse";
+        const offsetX = row % 2 === 0 ? 0 : hexW * 0.55;
+        node.x = 120 + col * (hexW + 10) + offsetX;
+        node.y = 120 + row * (hexH + 10);
+        node.width = 140;
+        node.height = 80;
+        node.type = "hexagon";
       });
 
       diagram.type = "mindmap";
