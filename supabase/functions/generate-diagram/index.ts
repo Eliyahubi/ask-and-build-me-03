@@ -396,24 +396,26 @@ const applyTemplateLayout = (diagram: DiagramResponse, templateId: TemplateId | 
 
       nodes.forEach((node, i) => {
         if (i === 0) {
-          node.x = centerX - 65;
-          node.y = centerY - 32;
+          node.x = centerX - node.width / 2;
+          node.y = centerY - node.height / 2;
           node.type = "ellipse";
           return;
         }
 
         if (i <= firstRing) {
-          const angle = ((i - 1) / Math.max(1, firstRing)) * Math.PI * 2;
-          node.x = centerX + 150 * Math.cos(angle) - 65;
-          node.y = centerY + 130 * Math.sin(angle) - 32;
+          const angle = ((i - 1) / Math.max(1, firstRing)) * Math.PI * 2 - Math.PI / 2;
+          const radiusX = 170 + Math.min(firstRing, 4) * 10;
+          const radiusY = 140 + Math.min(firstRing, 4) * 8;
+          node.x = centerX + radiusX * Math.cos(angle) - node.width / 2;
+          node.y = centerY + radiusY * Math.sin(angle) - node.height / 2;
           node.type = "rectangle";
           return;
         }
 
         const outerIndex = i - 1 - firstRing;
         const angle = (outerIndex / Math.max(1, secondRing)) * Math.PI * 2;
-        node.x = centerX + 235 * Math.cos(angle) - 65;
-        node.y = centerY + 190 * Math.sin(angle) - 32;
+        node.x = centerX + 250 * Math.cos(angle) - node.width / 2;
+        node.y = centerY + 200 * Math.sin(angle) - node.height / 2;
         node.type = "rectangle";
       });
 
