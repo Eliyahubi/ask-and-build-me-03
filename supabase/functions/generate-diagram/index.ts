@@ -79,13 +79,17 @@ type DiagramResponse = {
 
 const SYSTEM_PROMPT = `You are an expert infographic designer — think Napkin.ai quality. Given text, return a JSON object describing a BEAUTIFULLY DESIGNED visual diagram where text and visuals are TIGHTLY INTEGRATED.
 
+CRITICAL RULE — NODE COUNT:
+- Create ONE node for EVERY distinct concept, step, or item mentioned in the text.
+- If the text mentions 7 concepts, create 7 nodes. If it mentions 4, create 4.
+- Do NOT summarize or merge concepts. Each concept = one node.
+- Minimum 3 nodes, maximum 12 nodes.
+
 DESIGN PRINCIPLES:
 - Think like a VISUAL DESIGNER, not a text formatter
-- Each node label should be SHORT and PUNCHY: 1-2 words MAXIMUM. ONE word is best.
+- Each node label should be SHORT and PUNCHY: 1-3 words MAXIMUM
 - The title should be catchy and concise (2-4 words)
-- Choose the RIGHT number of nodes: fewer is better (3-6 ideal, max 7)
-- Think about visual HIERARCHY: the FIRST node is the main concept, make it larger
-- Group related concepts, show clear MEANINGFUL relationships with labeled connections
+- Think about visual HIERARCHY: the FIRST node is the main/central concept
 - The diagram should tell a STORY - there must be a clear visual flow
 
 TEXT-VISUAL INTEGRATION RULES:
@@ -102,7 +106,7 @@ RULES:
 - Leave 60px top margin for the title
 - Space nodes with at least 40px between them
 - CRITICAL: Detect the language of the input text. If Hebrew, ALL labels and title MUST be in Hebrew.
-- CRITICAL: Labels must be EXTREMELY concise. "תשתית יציבה בבסיס" → "תשתית". "User Experience Design" → "UX". ONE WORD.
+- CRITICAL: Labels must be EXTREMELY concise. "תשתית יציבה בבסיס" → "תשתית". "User Experience Design" → "UX".
 - Make the first node visually dominant (larger, centered or at top)
 - Connections must form a logical flow that matches the content's narrative
 
@@ -113,12 +117,12 @@ JSON Schema:
   "nodes": [
     {
       "id": "string",
-      "type": "rectangle" | "ellipse" | "diamond" | "circle",
+      "type": "rectangle" | "ellipse" | "diamond" | "circle" | "hexagon",
       "x": number,
       "y": number,
       "width": number (first node 180-220, others 130-160),
       "height": number (first node 80-100, others 60-70),
-      "label": "string - 1-2 words MAX"
+      "label": "string - 1-3 words MAX"
     }
   ],
   "connections": [
@@ -147,9 +151,15 @@ const toTemplateId = (value: unknown): TemplateId | null => {
 };
 
 const enforceNodeSizes = (nodes: DiagramNode[]) => {
-  nodes.forEach((node) => {
-    node.width = 130;
-    node.height = 64;
+  nodes.forEach((node, i) => {
+    if (i === 0) {
+      // Keep first node larger for hierarchy
+      node.width = Math.max(node.width, 170);
+      node.height = Math.max(node.height, 75);
+    } else {
+      node.width = 130;
+      node.height = 64;
+    }
   });
 };
 
@@ -386,24 +396,26 @@ const applyTemplateLayout = (diagram: DiagramResponse, templateId: TemplateId | 
 
       nodes.forEach((node, i) => {
         if (i === 0) {
-          node.x = centerX - 65;
-          node.y = centerY - 32;
+          node.x = centerX - node.width / 2;
+          node.y = centerY - node.height / 2;
           node.type = "ellipse";
           return;
         }
 
         if (i <= firstRing) {
-          const angle = ((i - 1) / Math.max(1, firstRing)) * Math.PI * 2;
-          node.x = centerX + 150 * Math.cos(angle) - 65;
-          node.y = centerY + 130 * Math.sin(angle) - 32;
+          const angle = ((i - 1) / Math.max(1, firstRing)) * Math.PI * 2 - Math.PI / 2;
+          const radiusX = 170 + Math.min(firstRing, 4) * 10;
+          const radiusY = 140 + Math.min(firstRing, 4) * 8;
+          node.x = centerX + radiusX * Math.cos(angle) - node.width / 2;
+          node.y = centerY + radiusY * Math.sin(angle) - node.height / 2;
           node.type = "rectangle";
           return;
         }
 
         const outerIndex = i - 1 - firstRing;
         const angle = (outerIndex / Math.max(1, secondRing)) * Math.PI * 2;
-        node.x = centerX + 235 * Math.cos(angle) - 65;
-        node.y = centerY + 190 * Math.sin(angle) - 32;
+        node.x = centerX + 250 * Math.cos(angle) - node.width / 2;
+        node.y = centerY + 200 * Math.sin(angle) - node.height / 2;
         node.type = "rectangle";
       });
 
