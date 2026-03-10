@@ -151,9 +151,15 @@ const toTemplateId = (value: unknown): TemplateId | null => {
 };
 
 const enforceNodeSizes = (nodes: DiagramNode[]) => {
-  nodes.forEach((node) => {
-    node.width = 130;
-    node.height = 64;
+  nodes.forEach((node, i) => {
+    if (i === 0) {
+      // Keep first node larger for hierarchy
+      node.width = Math.max(node.width, 170);
+      node.height = Math.max(node.height, 75);
+    } else {
+      node.width = 130;
+      node.height = 64;
+    }
   });
 };
 
