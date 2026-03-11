@@ -249,7 +249,7 @@ const InlineEditor = forwardRef<{ insertText: (text: string) => void }, InlineEd
             setBlocks((prev) =>
               prev.map((b) =>
                 b.id === blockId
-                  ? { ...b, antvSyntax: data.syntax }
+                  ? { ...b, antvSyntax: data.svg }
                   : b
               )
             );
