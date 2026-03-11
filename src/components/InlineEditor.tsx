@@ -219,7 +219,7 @@ const InlineEditor = forwardRef<{ insertText: (text: string) => void }, InlineEd
           setLoadingBlockId(null);
         }
       },
-      [generationMode, selectedTemplateId, aiAuto, renderStyle]
+      [generationMode, selectedTemplateId, aiAuto, renderStyle, onAiSuggestTemplate, onAiSuggestColorTheme]
     );
 
     const removeDiagram = useCallback((blockId: string) => {
@@ -249,7 +249,7 @@ const InlineEditor = forwardRef<{ insertText: (text: string) => void }, InlineEd
             setBlocks((prev) =>
               prev.map((b) =>
                 b.id === blockId
-                  ? { ...b, antvSyntax: data.syntax }
+                  ? { ...b, antvSyntax: data.svg }
                   : b
               )
             );

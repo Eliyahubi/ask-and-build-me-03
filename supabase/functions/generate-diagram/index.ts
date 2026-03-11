@@ -589,26 +589,30 @@ serve(async (req) => {
     let suggestedColorTheme: string | null = null;
 
     if (!templateId) {
-      const styleResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "google/gemini-2.5-flash-lite",
-          messages: [
-            { role: "system", content: "You are a visual design expert. Analyze the text and select the best diagram template and color theme." },
-            { role: "user", content: `Analyze this text and select the best visual template and color theme:\n\n${text}` },
-          ],
-          tools: autoSelectTools,
-          tool_choice: { type: "function", function: { name: "select_style" } },
-          temperature: 0.3,
-        }),
-      });
+      const styleController = new AbortController();
+      const styleTimeout = setTimeout(() => styleController.abort(), 15000);
 
-      if (styleResponse.ok) {
-        try {
+      try {
+        const styleResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${LOVABLE_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          signal: styleController.signal,
+          body: JSON.stringify({
+            model: "google/gemini-2.5-flash-lite",
+            messages: [
+              { role: "system", content: "You are a visual design expert. Analyze the text and select the best diagram template and color theme." },
+              { role: "user", content: `Analyze this text and select the best visual template and color theme:\n\n${text}` },
+            ],
+            tools: autoSelectTools,
+            tool_choice: { type: "function", function: { name: "select_style" } },
+            temperature: 0.3,
+          }),
+        });
+
+        if (styleResponse.ok) {
           const styleData = await styleResponse.json();
           const toolCall = styleData.choices?.[0]?.message?.tool_calls?.[0];
           if (toolCall?.function?.arguments) {
@@ -619,9 +623,11 @@ serve(async (req) => {
               suggestedColorTheme = args.colorTheme;
             }
           }
-        } catch (e) {
-          console.error("Failed to parse style selection:", e);
         }
+      } catch (e) {
+        console.warn("Style selection timed out or failed, using defaults:", e);
+      } finally {
+        clearTimeout(styleTimeout);
       }
 
       if (!templateId) templateId = "radial";
@@ -639,24 +645,39 @@ serve(async (req) => {
 
     const systemPrompt = buildSystemPrompt(conceptCount, concepts);
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: systemPrompt },
-          {
-            role: "user",
-            content: `${modeInstruction}\n\n${templateInstruction}\n\nCreate a diagram with EXACTLY ${conceptCount} nodes for:\n\n${text}`,
-          },
-        ],
-        temperature: mode === "creative" ? 0.7 : 0.2,
-      }),
-    });
+    const diagramController = new AbortController();
+    const diagramTimeout = setTimeout(() => diagramController.abort(), 30000);
+
+    let response: Response;
+    try {
+      response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        signal: diagramController.signal,
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash",
+          messages: [
+            { role: "system", content: systemPrompt },
+            {
+              role: "user",
+              content: `${modeInstruction}\n\n${templateInstruction}\n\nCreate a diagram with EXACTLY ${conceptCount} nodes for:\n\n${text}`,
+            },
+          ],
+          temperature: mode === "creative" ? 0.7 : 0.2,
+        }),
+      });
+    } catch (e) {
+      clearTimeout(diagramTimeout);
+      console.error("Diagram generation timed out:", e);
+      return new Response(JSON.stringify({ error: "Generation timed out. Please try again." }), {
+        status: 504, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    } finally {
+      clearTimeout(diagramTimeout);
+    }
 
     if (!response.ok) {
       const errText = await response.text();
