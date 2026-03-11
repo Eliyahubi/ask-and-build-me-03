@@ -4,7 +4,7 @@ import { X, RotateCcw, Download, Copy, Quote } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
-interface AntVDiagramProps {
+interface SvgDiagramProps {
   svgContent: string;
   sourceText: string;
   isRegenerating: boolean;
@@ -12,13 +12,13 @@ interface AntVDiagramProps {
   onRegenerate: () => void;
 }
 
-const AntVDiagram = ({
+const SvgDiagram = ({
   svgContent,
   sourceText,
   isRegenerating,
   onRemove,
   onRegenerate,
-}: AntVDiagramProps) => {
+}: SvgDiagramProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
   const handleDownload = useCallback(() => {
@@ -105,4 +105,4 @@ const AntVDiagram = ({
   );
 };
 
-export default AntVDiagram;
+export default SvgDiagram;
